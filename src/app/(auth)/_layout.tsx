@@ -1,4 +1,4 @@
-
+import '@/styles/global.css';
 import { useAuth } from '@clerk/expo';
 import { Redirect, Stack } from "expo-router";
 
