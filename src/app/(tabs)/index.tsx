@@ -8,6 +8,8 @@ import {
 } from "@/constants/data";
 import { icons } from "@/constants/icons";
 import images from "@/constants/images";
+import { posthog } from "@/lib/posthog";
+import { posthogLogger } from "@/lib/posthog-logger";
 import { formatCurrency } from "@/lib/utils";
 import { useUser } from "@clerk/expo";
 import dayjs from "dayjs";
@@ -29,6 +31,22 @@ export default function App() {
     useState<string | null>(null);
 
   const displayName = user?.firstName || user?.fullName || user?.emailAddresses[0]?.emailAddress || 'User';
+
+  const handleSubscriptionPress = (item: (typeof HOME_SUBSCRIPTIONS)[number]) => {
+    const isClosing = expandedSubscriptionId === item.id;
+    const subscriptionCategory = item.category ?? item.plan;
+
+    setExpandedSubscriptionId(isClosing ? null : item.id);
+    posthog?.capture(isClosing ? 'subscription_details_closed' : 'subscription_details_opened', {
+      billing_interval: item.billing,
+      subscription_category: subscriptionCategory,
+    });
+    posthogLogger.info('subscription details visibility changed', {
+      action: isClosing ? 'closed' : 'opened',
+      billing_interval: item.billing,
+      subscription_category: subscriptionCategory,
+    });
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-background p-5">
@@ -95,11 +113,7 @@ export default function App() {
         renderItem={({ item }) => (
           <SubscriptionCard
             {...item}
-            onPress={() =>
-              setExpandedSubscriptionId((currentId) =>
-                currentId === item.id ? null : item.id
-              )
-            }
+            onPress={() => handleSubscriptionPress(item)}
             expanded={expandedSubscriptionId === item.id}
           />
         )}

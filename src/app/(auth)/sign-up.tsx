@@ -1,5 +1,7 @@
 import { useAuth, useSignUp } from '@clerk/expo';
 import { Link, useRouter, type Href } from 'expo-router';
+import { posthog } from '@/lib/posthog';
+import { posthogLogger } from '@/lib/posthog-logger';
 import { styled } from 'nativewind';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
@@ -70,6 +72,10 @@ const SignUp = () => {
                         router.replace(url as Href);
                     }
                 },
+            });
+            posthog?.capture('user_signed_up', { sign_up_method: 'email' });
+            posthogLogger.info('user sign-up completed', {
+                authentication_method: 'email',
             });
         } else {
             console.error('Sign-up attempt not complete:', signUp);

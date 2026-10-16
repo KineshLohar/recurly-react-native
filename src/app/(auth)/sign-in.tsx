@@ -1,5 +1,7 @@
 import { useSignIn } from '@clerk/expo';
 import { Link, useRouter, type Href } from 'expo-router';
+import { posthog } from '@/lib/posthog';
+import { posthogLogger } from '@/lib/posthog-logger';
 import { styled } from 'nativewind';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
@@ -60,6 +62,10 @@ const SignIn = () => {
                     }
                 },
             });
+            posthog?.capture('user_signed_in', { sign_in_method: 'password' });
+            posthogLogger.info('user sign-in completed', {
+                authentication_method: 'password',
+            });
         } else if (signIn.status === 'needs_second_factor') {
             // Handle MFA if needed (not implemented in this basic flow)
             console.log('MFA required');
@@ -101,6 +107,10 @@ const SignIn = () => {
                         router.replace(url as Href);
                     }
                 },
+            });
+            posthog?.capture('user_signed_in', { sign_in_method: 'password' });
+            posthogLogger.info('user sign-in completed', {
+                authentication_method: 'password',
             });
         } else {
             console.error('Sign-in attempt not complete:', signIn);
