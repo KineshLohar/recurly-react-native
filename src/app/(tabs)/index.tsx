@@ -1,15 +1,16 @@
+import CreateSubscriptionModal from "@/components/CreateSubscriptionModal";
 import ListHeading from "@/components/ListHeading";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import {
   HOME_BALANCE,
-  HOME_SUBSCRIPTIONS,
   UPCOMING_SUBSCRIPTIONS
 } from "@/constants/data";
 import { icons } from "@/constants/icons";
 import images from "@/constants/images";
 import { posthog } from "@/lib/posthog";
 import { posthogLogger } from "@/lib/posthog-logger";
+import { useSubscriptionStore } from "@/lib/subscriptionStore";
 import { formatCurrency } from "@/lib/utils";
 import { useUser } from "@clerk/expo";
 import dayjs from "dayjs";
@@ -18,6 +19,7 @@ import { useState } from "react";
 import {
   FlatList,
   Image,
+  Pressable,
   Text,
   View,
 } from "react-native";
@@ -27,12 +29,15 @@ const SafeAreaView = styled(RNSafeAreaView);
 
 export default function App() {
   const { user } = useUser();
+  const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [expandedSubscriptionId, setExpandedSubscriptionId] =
     useState<string | null>(null);
 
+  const { subscriptions, addSubscription } = useSubscriptionStore();
+
   const displayName = user?.firstName || user?.fullName || user?.emailAddresses[0]?.emailAddress || 'User';
 
-  const handleSubscriptionPress = (item: (typeof HOME_SUBSCRIPTIONS)[number]) => {
+  const handleSubscriptionPress = (item: Subscription) => {
     const isClosing = expandedSubscriptionId === item.id;
     const subscriptionCategory = item.category ?? item.plan;
 
@@ -48,12 +53,22 @@ export default function App() {
     });
   };
 
+  const handleCreateSubscription = (newSubscription: Subscription) => {
+    addSubscription(newSubscription);
+    posthog?.capture('subscription_created', {
+      subscription_name: newSubscription.name,
+      subscription_price: newSubscription.price,
+      subscription_frequency: newSubscription.frequency,
+      subscription_category: newSubscription.category,
+    });
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-background p-5">
       <FlatList
         className="flex-1"
         style={{ flex: 1 }}
-        data={HOME_SUBSCRIPTIONS}
+        data={subscriptions}
         keyExtractor={(item) => item.id}
         extraData={expandedSubscriptionId}
         showsVerticalScrollIndicator={false}
@@ -70,7 +85,9 @@ export default function App() {
                 </Text>
               </View>
 
-              <Image source={icons.add} className="home-add-icon" />
+              <Pressable onPress={() => setIsCreateModalVisible(true)}>
+                <Image source={icons.add} className="home-add-icon" />
+              </Pressable>
             </View>
 
             <View className="home-balance-card">
@@ -123,6 +140,12 @@ export default function App() {
           </Text>
         }
         contentContainerClassName="pb-28"
+      />
+
+      <CreateSubscriptionModal
+        visible={isCreateModalVisible}
+        onClose={() => setIsCreateModalVisible(false)}
+        onCreate={handleCreateSubscription}
       />
     </SafeAreaView>
   );
