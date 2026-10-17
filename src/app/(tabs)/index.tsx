@@ -3,8 +3,7 @@ import ListHeading from "@/components/ListHeading";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import {
-  HOME_BALANCE,
-  UPCOMING_SUBSCRIPTIONS
+  HOME_BALANCE
 } from "@/constants/data";
 import { icons } from "@/constants/icons";
 import images from "@/constants/images";
@@ -15,7 +14,7 @@ import { formatCurrency } from "@/lib/utils";
 import { useUser } from "@clerk/expo";
 import dayjs from "dayjs";
 import { styled } from "nativewind";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   FlatList,
   Image,
@@ -36,6 +35,16 @@ export default function App() {
   const { subscriptions, addSubscription } = useSubscriptionStore();
 
   const displayName = user?.firstName || user?.fullName || user?.emailAddresses[0]?.emailAddress || 'User';
+
+  const upcomingSubscriptions = useMemo(() => {
+    const now = dayjs();
+    const nextWeek = now.add(7, 'days');
+    return subscriptions.filter(sub =>
+      sub.status === 'active' &&
+      dayjs(sub.renewalDate).isAfter(now) &&
+      dayjs(sub.renewalDate).isBefore(nextWeek)
+    ).sort((a, b) => dayjs(a.renewalDate).diff(dayjs(b.renewalDate)));
+  }, [subscriptions]);
 
   const handleSubscriptionPress = (item: Subscription) => {
     const isClosing = expandedSubscriptionId === item.id;
@@ -109,11 +118,17 @@ export default function App() {
 
               <FlatList
                 horizontal
-                data={UPCOMING_SUBSCRIPTIONS}
+                data={upcomingSubscriptions}
                 keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                  <UpcomingSubscriptionCard {...item} />
-                )}
+                renderItem={({ item }) => {
+                  const daysLeft = Math.max(
+                    0,
+                    dayjs(item.renewalDate).startOf("day").diff(dayjs().startOf("day"), "day")
+                  );
+                  return (
+                    <UpcomingSubscriptionCard {...item} daysLeft={daysLeft} />
+                  )
+                }}
                 showsHorizontalScrollIndicator={false}
                 nestedScrollEnabled
                 keyboardShouldPersistTaps="handled"
